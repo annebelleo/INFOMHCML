@@ -5,7 +5,7 @@ from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 
-file_path = 'data/result_SHAP/shap_values.csv'
+file_path = 'data/result_SHAP/shap_values_predict_sex.csv'
 
 # Load your dataset
 data = pd.read_csv('data/student-por.csv', delimiter=';')
@@ -24,7 +24,7 @@ data = data.replace(to_replace=['no', 'yes'], value=[0, 1])  # various yes/no co
 # Prepare features and target variable
 features = data.drop(columns=['G3', 'sex'])
 X = features
-y = data['G3']  # Predict final grade
+y = data['sex']  # Predict sex
 
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
