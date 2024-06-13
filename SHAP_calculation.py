@@ -24,7 +24,8 @@ data = data.replace(to_replace=['course', 'other', 'home', 'reputation'], value=
 data = data.replace(to_replace=['no', 'yes'], value=[0, 1])  # various yes/no columns
 
 # Give it the trained model, the training set, the test set and the variable that we want to predict and it will return the SHAP values(at the bottom you can find an example)
-def calculate_and_save_shap_values(model, X_train, X_test, X_predict):
+#recalculate = True if you want to recalculate SHAP values (for example if you have already calculated them with a model, but you change the hyperparameters afterwards so you need to recalculate the values)
+def calculate_and_save_shap_values(model, X_train, X_test, X_predict, recalculate = False):
 
     # Extract column names from X_train
     columns = X_train.columns.tolist()
@@ -34,7 +35,12 @@ def calculate_and_save_shap_values(model, X_train, X_test, X_predict):
     column_str = '_'.join(columns)
     full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}.csv"
 
-    if not os.path.exists(full_path):
+    if os.path.exists(full_path) and not recalculate:
+
+        shap_values_df = pd.read_csv(full_path)
+        shap_values = shap_values_df.values
+
+    else:
         # Initialize the SHAP explainer
         explainer = shap.KernelExplainer(model.predict, X_train)
 
@@ -47,10 +53,6 @@ def calculate_and_save_shap_values(model, X_train, X_test, X_predict):
         # Save the SHAP values to a file
         shap_values_df = pd.DataFrame(shap_values, columns=X_test.columns)
         shap_values_df.to_csv(full_path, index=False)
-
-    else:
-        shap_values_df = pd.read_csv(full_path)
-        shap_values = shap_values_df.values
     return shap_values
 
 #plot things with SHAP
@@ -96,5 +98,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 regr = SVR().fit(X_train, y_train)
 
 shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y)
+#if you want to calculate again the SHAP values
+shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y, True)
 plot_shap_values(shap_values, X_test)
+#1 is the number of top features that you want to return (the most impacting ones on the final outcome)
 print(most_important_feature(shap_values, X_test, 1))
