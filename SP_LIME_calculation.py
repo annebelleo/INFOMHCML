@@ -2,13 +2,10 @@ import os
 import pandas as pd
 from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
-from sklearn import metrics
-import numpy as np
-from lime import lime_tabular
 from lime.lime_tabular import LimeTabularExplainer
 from collections import Counter
 import ast
-
+from lime import submodular_pick
 
 file_path = 'data/result_LIME'
 
@@ -35,16 +32,18 @@ def calculate_and_save_lime_values(model, X_train, X_test, X_predict):
     predict_column = X_predict.name
     # Construct the path
     column_str = '_'.join(columns)
-    full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}.csv"
+    full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}"
 
     if not os.path.exists(full_path):
-        # Initialize the SHAP explainer
+
         explainer = LimeTabularExplainer(X_train.values, mode='regression', feature_names=X_train.columns,
                                          training_labels=y_train, discretize_continuous=True)
+
+        exps = submodular_pick.SubmodularPick(explainer, X_train.to_numpy(), model.predict, method='full', num_features=X_train.shape[1],
+                                       num_exps_desired=4)
+
         lime_values = []
-        for i in range(X_test.shape[0]):
-            # Generate explanation for the current test instance
-            exp = explainer.explain_instance(X_test.iloc[i].values, model.predict)
+        for exp in exps.sp_explanations:
             lime_values.append(exp.as_list())
 
         lime_values_formatted = []
@@ -59,18 +58,22 @@ def calculate_and_save_lime_values(model, X_train, X_test, X_predict):
                 parsed_features.append((feature_name, feature_value))
             lime_values_formatted.append(parsed_features)
 
+        # Assuming sp_obj.sp_explanations is a list of explanations
+        figures = [exp.as_pyplot_figure() for exp in exps.sp_explanations]
+
+        # save each figure individually
+        for i, fig in enumerate(figures):
+            fig.savefig(full_path + f'figure_{i + 1}.png')
+            #fig.show()  # or plt.show(fig) depending on the exact return type
+            #[exp.as_pyplot_figure() for exp in exps.sp_explanations]
+
+        #lime_values_formatted = []
         lime_df = pd.DataFrame(lime_values_formatted)
         lime_df.to_csv(full_path, index=False)
 
     else:
-        lime_values = pd.read_csv(full_path)
-        lime_values = lime_values.iloc[1:]
-    return lime_values
-
-#plot things with SHAP
-def plot_lime_values(lime_df, X_test):
-    # Here we simply print the first few LIME explanations as an example
-    print('test')
+        lime_df = pd.read_csv(full_path)
+    return lime_df
 def parse_feature(feature_str):
     # This function parses the string representation of the tuple
     try:
@@ -80,25 +83,19 @@ def parse_feature(feature_str):
 
 
 def most_important_feature(lime_values, num_features=1):
+
+
     most_important_features = []
 
-    for instance in lime_values:
-        for feature in instance:
-            feature[1]
+    absolute_values = [abs(lime_values[0][1]) for item in lime_values[1:]]
 
+    # Find the index of the maximum absolute value
+    max_index = absolute_values.index(max(absolute_values))
 
-        parsed_features = [parse_feature(f) for f in instance]
-        # Filter out any None values that failed to parse
-        parsed_features = [f for f in parsed_features if f is not None]
+    # Get the tuple with the largest absolute value
+    largest_tuple = data[max_index][0]
 
-        # Sort the features based on their absolute importance
-        sorted_features = sorted(parsed_features, key=lambda x: abs(x[1]), reverse=True)
-        if sorted_features:
-            most_important_features.append(sorted_features[0][0])
-
-    # Count the frequency of each feature
-    feature_counter = Counter(most_important_features)
-    return feature_counter.most_common(num_features)
+    return True
 
 
 # Prepare features and target variable
@@ -114,5 +111,4 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 regr = SVR().fit(X_train, y_train)
 
 lime_values = calculate_and_save_lime_values(regr, X_train, X_test, y)
-plot_lime_values(lime_values, X_test)
 print(most_important_feature(lime_values, 1))
