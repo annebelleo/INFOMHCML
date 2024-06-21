@@ -64,8 +64,7 @@ def calculate_and_save_pfi_values(model, X_train, X_test, Y_TEST):
         pfi_results_df.to_csv(full_path, index=False)
 
     else:
-        pfi_values = pd.read_csv(full_path)
-        pfi_results_df = pfi_values.iloc[1:]
+        pfi_results_df = pd.read_csv(full_path)
     return pfi_results_df
 
 def plot_pfi_values(pfi_values):
