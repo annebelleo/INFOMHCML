@@ -52,50 +52,39 @@ def calculate_and_save_lime_values(model, X_train, X_test, X_predict):
             for feature in value:
                 parts = feature[0].split()
                 for col in X.columns:
-                    if col in parts[0]:
+                    if col in parts:
                         feature_name = col
                 feature_value = feature[1]
                 parsed_features.append((feature_name, feature_value))
             lime_values_formatted.append(parsed_features)
+
+        #checking that limes values are listed by importance
+        lime_values_feature_ranking = []
+        for element in lime_values_formatted:
+            sorted_values = sorted(element, key=lambda x: abs(x[1]), reverse=True)
+            lime_values_feature_ranking.append([item[0] for item in sorted_values])
+
 
         # Assuming sp_obj.sp_explanations is a list of explanations
         figures = [exp.as_pyplot_figure() for exp in exps.sp_explanations]
 
         # save each figure individually
         for i, fig in enumerate(figures):
-            fig.savefig(full_path + f'figure_{i + 1}.png')
+            fig.savefig(full_path + f'_exp_{i + 1}_figure_{i + 1}.png')
             #fig.show()  # or plt.show(fig) depending on the exact return type
             #[exp.as_pyplot_figure() for exp in exps.sp_explanations]
 
         #lime_values_formatted = []
-        lime_df = pd.DataFrame(lime_values_formatted)
+        lime_df = pd.DataFrame(lime_values_feature_ranking)
         lime_df.to_csv(full_path, index=False)
 
     else:
         lime_df = pd.read_csv(full_path)
     return lime_df
-def parse_feature(feature_str):
-    # This function parses the string representation of the tuple
-    try:
-        return ast.literal_eval(feature_str)
-    except (ValueError, SyntaxError):
-        return None
 
-
-def most_important_feature(lime_values, num_features=1):
-
-
-    most_important_features = []
-
-    absolute_values = [abs(lime_values[0][1]) for item in lime_values[1:]]
-
-    # Find the index of the maximum absolute value
-    max_index = absolute_values.index(max(absolute_values))
-
-    # Get the tuple with the largest absolute value
-    largest_tuple = data[max_index][0]
-
-    return True
+#retrieve feature list importance from the first explanation
+def retrieve_feature_list(lime_values):
+    return [item for item in lime_values.iloc[0]]
 
 
 # Prepare features and target variable
@@ -111,4 +100,4 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 regr = SVR().fit(X_train, y_train)
 
 lime_values = calculate_and_save_lime_values(regr, X_train, X_test, y)
-print(most_important_feature(lime_values, 1))
+print(retrieve_feature_list(lime_values))

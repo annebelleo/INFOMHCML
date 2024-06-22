@@ -99,7 +99,7 @@ regr = SVR().fit(X_train, y_train)
 
 shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y)
 #if you want to calculate again the SHAP values
-shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y, True)
+#shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y, True)
 plot_shap_values(shap_values, X_test)
 #1 is the number of top features that you want to return (the most impacting ones on the final outcome)
 print(most_important_feature(shap_values, X_test, 1))
