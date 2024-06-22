@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import statistics
 
 file_path = 'data/result_PFI'
-pfi_loops = 5 #for more robust calculations increase this value
+pfi_loops = 100 #for more robust calculations increase this value
 
 # Load your dataset
 data = pd.read_csv('data/student-por.csv', delimiter=';')
