@@ -6,11 +6,10 @@ from sklearn.metrics import root_mean_squared_error
 from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-from collections import Counter
-import ast
-from lime import submodular_pick
+import statistics
 
 file_path = 'data/result_PFI'
+pfi_loops = 5 #for more robust calculations increase this value
 
 # Load your dataset
 data = pd.read_csv('data/student-por.csv', delimiter=';')
@@ -30,12 +29,15 @@ def PFI(X, labels, model, base_rmse):
   results = []
 
   for feature in X.columns:
-      X_permuted = X.copy()
-      X_permuted[feature] = np.random.permutation(X_permuted[feature])
-      predictions = model.predict(X_permuted)
-      new_rmse = root_mean_squared_error(labels, predictions)
-      rmse_increase = new_rmse - base_rmse
-      results.append((feature, rmse_increase))
+      average_error = []
+      for run in range(pfi_loops):
+          X_permuted = X.copy()
+          X_permuted[feature] = np.random.permutation(X_permuted[feature])
+          predictions = model.predict(X_permuted)
+          new_rmse = root_mean_squared_error(labels, predictions)
+          rmse_increase = new_rmse - base_rmse
+          average_error.append(rmse_increase)
+      results.append((feature, statistics.mean(average_error)))
 
   results_df = pd.DataFrame(results, columns=['Feature', 'RMSE Increase'])
   results_df = results_df.sort_values(by='RMSE Increase', ascending=False).reset_index(drop=True)
