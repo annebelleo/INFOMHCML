@@ -155,8 +155,8 @@ for proxy in common_proxies_shap:
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
-    regr_sex_all_feature = SVR().fit(X_train, y_train)
-    pred = regr_sex_all_feature.predict(X_test)
+    regr = SVR().fit(X_train, y_train)
+    pred = regr.predict(X_test)
     proxies.append(proxy)
 
     # accuracy and fairness (add fairness)
@@ -183,8 +183,8 @@ for proxy in common_proxies_lime:
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
-    regr_sex_all_feature = SVR().fit(X_train, y_train)
-    pred = regr_sex_all_feature.predict(X_test)
+    regr = SVR().fit(X_train, y_train)
+    pred = regr.predict(X_test)
     proxies.append(proxy)
 
     # accuracy and fairness (add fairness)
@@ -211,8 +211,8 @@ for proxy in common_proxies_pfi:
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
-    regr_sex_all_feature = SVR().fit(X_train, y_train)
-    pred = regr_sex_all_feature.predict(X_test)
+    regr = SVR().fit(X_train, y_train)
+    pred = regr.predict(X_test)
     proxies.append(proxy)
 
     # accuracy and fairness (add fairness)
@@ -239,8 +239,8 @@ for proxy in common_proxies_correlation:
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
-    regr_sex_all_feature = SVR().fit(X_train, y_train)
-    pred = regr_sex_all_feature.predict(X_test)
+    regr = SVR().fit(X_train, y_train)
+    pred = regr.predict(X_test)
     proxies.append(proxy)
 
     # accuracy and fairness (add fairness)
