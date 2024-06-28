@@ -4,9 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shap
-from sklearn import svm
-from sklearn.model_selection import train_test_split
-from sklearn.svm import SVR
 
 file_path = 'data/result_SHAP'
 
