@@ -40,27 +40,34 @@ def PFI(X, labels, model, base_rmse):
       results.append((feature, statistics.mean(average_error)))
 
   results_df = pd.DataFrame(results, columns=['Feature', 'RMSE Increase'])
+  results_df['RMSE Increase'] = results_df['RMSE Increase'].abs()
   results_df = results_df.sort_values(by='RMSE Increase', ascending=False).reset_index(drop=True)
 
   return results_df
 
 # Give it the trained model, the training set, the test set and the variable that we want to predict and it will return the SHAP values(at the bottom you can find an example)
-def calculate_and_save_pfi_values(model, X_train, X_test, Y_TEST):
+def calculate_and_save_pfi_values(model, X_test, y_test, predict_variable):
 
     # Extract column names from X_train
-    columns = X_train.columns.tolist()
+    columns = X_test.columns.tolist()
     # Extract the name of the variable to predict from X_predict
-    predict_column = Y_TEST.name
+    predict_column = predict_variable.name
     # Construct the path
     column_str = '_'.join(columns)
     full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}.csv"
 
+    # Create the result_LIME directory if it doesn't exist
+    os.makedirs('data/result_LIME', exist_ok=True)
+
+    # if the path contains more than 260 chars use a shorter string
+    if len(full_path) > 260:
+        full_path = f"{file_path}/MODEL_{type(model).__name__}_PRED_{predict_column}"
+
     if not os.path.exists(full_path):
 
         base_predictions = model.predict(X_test)
-        base_rmse = root_mean_squared_error(Y_TEST, base_predictions)
-        pfi_results_df = PFI(X_test, Y_TEST, model, base_rmse)
-
+        base_rmse = root_mean_squared_error(y_test, base_predictions)
+        pfi_results_df = PFI(X_test, y_test, model, base_rmse)
 
         # Save the PFI values to a file
         pfi_results_df.to_csv(full_path, index=False)
@@ -78,18 +85,16 @@ def plot_pfi_values(pfi_values):
     plt.gca().invert_yaxis()
     plt.show()
 
-
+'''
 # Prepare features and target variable
 #features = data.drop(columns=['G3'])
-features = data[['G2', 'G1']]
-X = features
-y = data['G3']  # Predict final grade
-
-# Train-test split
+features = data
+X = features.drop(columns=['G1', 'G2', 'G3', 'sex'])
+y = data['sex']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Train the model
+#use SVR for the poster presentation (SVC has a different structure for shap)
 regr = SVR().fit(X_train, y_train)
-
-pfi_values = calculate_and_save_pfi_values(regr, X_train, X_test, y_test)
+pfi_values = calculate_and_save_pfi_values(regr, X_train, X_test, y)
 plot_pfi_values(pfi_values)
+'''

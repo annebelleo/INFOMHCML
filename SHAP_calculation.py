@@ -1,11 +1,12 @@
-import shap
 import os
-import pandas as pd
-from sklearn.svm import SVR
-from sklearn.model_selection import train_test_split
-from sklearn import metrics
-import numpy as np
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import shap
+from sklearn import svm
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVR
 
 file_path = 'data/result_SHAP'
 
@@ -33,7 +34,13 @@ def calculate_and_save_shap_values(model, X_train, X_test, X_predict, recalculat
     predict_column = X_predict.name
     # Construct the path
     column_str = '_'.join(columns)
-    full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}.csv"
+    full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}"
+    # Create the result_SHAP directory if it doesn't exist
+    os.makedirs('data/result_SHAP', exist_ok=True)
+
+    #if the path contains more than 260 chars use a shorter string
+    if len(full_path) > 260:
+        full_path = f"{file_path}/MODEL_{type(model).__name__}_PRED_{predict_column}"
 
     if os.path.exists(full_path) and not recalculate:
 
@@ -41,14 +48,18 @@ def calculate_and_save_shap_values(model, X_train, X_test, X_predict, recalculat
         shap_values = shap_values_df.values
 
     else:
-        # Initialize the SHAP explainer
+        # Initialize the SHAP explainer SVC
         explainer = shap.KernelExplainer(model.predict, X_train)
 
         # Calculate SHAP values for the test set
         shap_values = explainer.shap_values(X_test)
 
-        # Create the result_SHAP directory if it doesn't exist
-        os.makedirs('data/result_SHAP', exist_ok=True)
+        # Bar plot
+        fig = shap.summary_plot(shap_values, X_test, plot_type="bar", feature_names=X_test.columns, max_display=5,
+                                show=False)
+
+        # save each figure individually
+        plt.savefig(full_path)
 
         # Save the SHAP values to a file
         shap_values_df = pd.DataFrame(shap_values, columns=X_test.columns)
@@ -85,21 +96,25 @@ def most_important_feature(shap_values, X_test, num_features):
 
     return top_5_features
 
+'''
 # Prepare features and target variable
 #features = data.drop(columns=['G3'])
-features = data[['G2', 'G1']]
+#features = data[['G2', 'G1']]
+features = data.drop(columns=['G3', 'G1', 'G2'])
 X = features
 y = data['G3']  # Predict final grade
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
 
 # Train the model
 regr = SVR().fit(X_train, y_train)
+clf = svm.SVC(probability=True).fit(X_train, y_train)
 
-shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y)
+shap_values = calculate_and_save_shap_values(regr, X_train.head(60), X_test.head(60), y.head(60))
 #if you want to calculate again the SHAP values
 #shap_values = calculate_and_save_shap_values(regr, X_train, X_test, y, True)
 plot_shap_values(shap_values, X_test)
 #1 is the number of top features that you want to return (the most impacting ones on the final outcome)
 print(most_important_feature(shap_values, X_test, 1))
+'''
