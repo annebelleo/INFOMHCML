@@ -64,7 +64,7 @@ X = features
 y = data['G3']  # Predict final grade
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train the model
 regr_final_grade_all_features = SVR().fit(X_train, y_train)
@@ -101,7 +101,7 @@ X = features
 y = data['sex']  # Predict final grade
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Train the model
 regr_sex_all_feature = SVR().fit(X_train, y_train)
@@ -153,7 +153,7 @@ for proxy in common_proxies_shap:
     # change the values of proxies using the same method as the paper
     X[proxy] = change_values(X[proxy], proxy)
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
     regr_sex_all_feature = SVR().fit(X_train, y_train)
     pred = regr_sex_all_feature.predict(X_test)
@@ -181,7 +181,7 @@ for proxy in common_proxies_lime:
     # change the values of proxies using the same method as the paper
     X[proxy] = change_values(X[proxy], proxy)
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
     regr_sex_all_feature = SVR().fit(X_train, y_train)
     pred = regr_sex_all_feature.predict(X_test)
@@ -209,7 +209,7 @@ for proxy in common_proxies_pfi:
     # change the values of proxies using the same method as the paper
     X[proxy] = change_values(X[proxy], proxy)
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
     regr_sex_all_feature = SVR().fit(X_train, y_train)
     pred = regr_sex_all_feature.predict(X_test)
@@ -237,7 +237,7 @@ for proxy in common_proxies_correlation:
     # change the values of proxies using the same method as the paper
     X[proxy] = change_values(X[proxy], proxy)
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     # Train the model
     regr_sex_all_feature = SVR().fit(X_train, y_train)
     pred = regr_sex_all_feature.predict(X_test)
