@@ -35,6 +35,18 @@ def change_values(series, string):
 
     return series
 
+def proxy_removal_metrics_check(common_proxies, regr, X_test, y_test):
+    proxies = []
+    for proxy in common_proxies:
+        # change the values of proxies using the same method as the paper
+        X_test[proxy] = change_values(X_test[proxy], proxy)
+        # Train the model
+        pred = regr.predict(X_test)
+        proxies.append(proxy)
+
+        print('\n SVR model - predicting G3 without using protected attribute sex and ' + str(proxies))
+        print(metrics.mean_squared_error(y_test, pred))
+
 
 def load_dataset():
     # Load your dataset
@@ -64,7 +76,7 @@ X = features
 y = data['G3']  # Predict final grade
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
 
 # Train the model
 regr_final_grade_all_features = SVR().fit(X_train, y_train)
@@ -101,7 +113,7 @@ X = features
 y = data['sex']  # Predict final grade
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
 
 # Train the model
 regr_sex_all_feature = SVR().fit(X_train, y_train)
@@ -148,20 +160,16 @@ features = data.drop(columns=features_not_used)
 X = features
 y = data['G3']  # Predict final grade
 
-proxies = []
-for proxy in common_proxies_shap:
-    # change the values of proxies using the same method as the paper
-    X[proxy] = change_values(X[proxy], proxy)
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    # Train the model
-    regr = SVR().fit(X_train, y_train)
-    pred = regr.predict(X_test)
-    proxies.append(proxy)
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+regr = SVR().fit(X_train, y_train)
 
-    # accuracy and fairness (add fairness)
-    print('\n SVR model - SHAP predicting G3 without using protected attribute sex and ' + str(proxies))
-    print(metrics.mean_squared_error(y_test, pred))
+# accuracy and fairness (add fairness)
+print('\n SVR model - SHAP predicting G3 without using protected attribute sex and ' + str(common_proxies_shap))
+proxy_removal_metrics_check(common_proxies_shap, regr, X_test, y_test)
+
+
+
 
 '''--------Retraining the model without using sex and proxies LIME--------'''
 print('\n\n--------Retraining the model without using sex and proxies LIME--------\n\n')
@@ -176,20 +184,14 @@ features = data.drop(columns=features_not_used)
 X = features
 y = data['G3']  # Predict final grade
 
-proxies = []
-for proxy in common_proxies_lime:
-    # change the values of proxies using the same method as the paper
-    X[proxy] = change_values(X[proxy], proxy)
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    # Train the model
-    regr = SVR().fit(X_train, y_train)
-    pred = regr.predict(X_test)
-    proxies.append(proxy)
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+regr = SVR().fit(X_train, y_train)
 
-    # accuracy and fairness (add fairness)
-    print('\n SVR model - LIME predicting G3 without using protected attribute sex and ' + str(proxies))
-    print(metrics.mean_squared_error(y_test, pred))
+# accuracy and fairness (add fairness)
+print('\n SVR model - LIME predicting G3 without using protected attribute sex and ' + str(common_proxies_lime))
+# accuracy and fairness (add fairness)
+proxy_removal_metrics_check(common_proxies_lime, regr, X_test, y_test)
 
 '''--------Retraining the model without using sex and proxies PFI--------'''
 print('\n\n--------Retraining the model without using sex and proxies PFI--------\n\n')
@@ -204,20 +206,14 @@ features = data.drop(columns=features_not_used)
 X = features
 y = data['G3']  # Predict final grade
 
-proxies = []
-for proxy in common_proxies_pfi:
-    # change the values of proxies using the same method as the paper
-    X[proxy] = change_values(X[proxy], proxy)
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    # Train the model
-    regr = SVR().fit(X_train, y_train)
-    pred = regr.predict(X_test)
-    proxies.append(proxy)
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+regr = SVR().fit(X_train, y_train)
 
-    # accuracy and fairness (add fairness)
-    print('\n SVR model - PFI predicting G3 without using protected attribute sex and ' + str(proxies))
-    print(metrics.mean_squared_error(y_test, pred))
+# accuracy and fairness (add fairness)
+print('\n SVR model - PFI predicting G3 without using protected attribute sex and ' + str(common_proxies_pfi))
+# accuracy and fairness (add fairness)
+proxy_removal_metrics_check(common_proxies_pfi, regr, X_test, y_test)
 
 '''--------Retraining the model without using sex and proxies Correlation--------'''
 print('\n\n--------Retraining the model without using sex and proxies Correlation--------\n\n')
@@ -232,17 +228,12 @@ features = data.drop(columns=features_not_used)
 X = features
 y = data['G3']  # Predict final grade
 
-proxies = []
-for proxy in common_proxies_correlation:
-    # change the values of proxies using the same method as the paper
-    X[proxy] = change_values(X[proxy], proxy)
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    # Train the model
-    regr = SVR().fit(X_train, y_train)
-    pred = regr.predict(X_test)
-    proxies.append(proxy)
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+regr = SVR().fit(X_train, y_train)
 
-    # accuracy and fairness (add fairness)
-    print('\n SVR model - Correlation predicting G3 without using protected attribute sex and ' + str(proxies))
-    print(metrics.mean_squared_error(y_test, pred))
+# accuracy and fairness (add fairness)
+print('\n SVR model - Correlation predicting G3 without using protected attribute sex and ' + str(common_proxies_correlation))
+# accuracy and fairness (add fairness)
+proxy_removal_metrics_check(common_proxies_correlation, regr, X_test, y_test)
+
