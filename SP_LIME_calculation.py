@@ -6,6 +6,7 @@ from lime.lime_tabular import LimeTabularExplainer
 from collections import Counter
 import ast
 from lime import submodular_pick
+import matplotlib.pyplot as plt
 
 file_path = 'data/result_LIME'
 
@@ -24,20 +25,27 @@ data = data.replace(to_replace=['course', 'other', 'home', 'reputation'], value=
 data = data.replace(to_replace=['no', 'yes'], value=[0, 1])  # various yes/no columns
 
 # Give it the trained model, the training set, the test set and the variable that we want to predict and it will return the SHAP values(at the bottom you can find an example)
-def calculate_and_save_lime_values(model, X_train, X_test, X_predict):
+def calculate_and_save_lime_values(model,X, X_train, X_test, predict_variable):
 
     # Extract column names from X_train
     columns = X_train.columns.tolist()
     # Extract the name of the variable to predict from X_predict
-    predict_column = X_predict.name
+    predict_column = predict_variable.name
     # Construct the path
     column_str = '_'.join(columns)
     full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}"
 
-    if not os.path.exists(full_path):
+    # Create the result_LIME directory if it doesn't exist
+    os.makedirs('data/result_LIME', exist_ok=True)
+
+    # if the path contains more than 260 chars use a shorter string
+    if len(full_path) > 260:
+        full_path = f"{file_path}/MODEL_{type(model).__name__}_PRED_{predict_column}"
+
+    if not os.path.exists(full_path + f'.csv'):
 
         explainer = LimeTabularExplainer(X_train.values, mode='regression', feature_names=X_train.columns,
-                                         training_labels=y_train, discretize_continuous=True)
+                                         training_labels=X_test, discretize_continuous=True)
 
         exps = submodular_pick.SubmodularPick(explainer, X_train.to_numpy(), model.predict, method='full', num_features=X_train.shape[1],
                                        num_exps_desired=4)
@@ -70,23 +78,24 @@ def calculate_and_save_lime_values(model, X_train, X_test, X_predict):
 
         # save each figure individually
         for i, fig in enumerate(figures):
-            fig.savefig(full_path + f'_exp_{i + 1}_figure_{i + 1}.png')
+            fig.savefig(full_path + f'exp_{i + 1}_figure_{i + 1}.png')
+            fig.show()  # or plt.show(fig) depending on the exact return type
             #fig.show()  # or plt.show(fig) depending on the exact return type
             #[exp.as_pyplot_figure() for exp in exps.sp_explanations]
 
         #lime_values_formatted = []
         lime_df = pd.DataFrame(lime_values_feature_ranking)
-        lime_df.to_csv(full_path, index=False)
+        lime_df.to_csv(full_path + f'.csv', index=False)
 
     else:
-        lime_df = pd.read_csv(full_path)
+        lime_df = pd.read_csv(full_path+ f'.csv')
     return lime_df
 
 #retrieve feature list importance from the first explanation
 def retrieve_feature_list(lime_values):
     return [item for item in lime_values.iloc[0]]
 
-
+'''
 # Prepare features and target variable
 #features = data.drop(columns=['G3'])
 features = data[['G2', 'G1']]
@@ -101,3 +110,4 @@ regr = SVR().fit(X_train, y_train)
 
 lime_values = calculate_and_save_lime_values(regr, X_train, X_test, y)
 print(retrieve_feature_list(lime_values))
+'''
