@@ -1,12 +1,8 @@
 import os
+
 import pandas as pd
-from sklearn.svm import SVR
-from sklearn.model_selection import train_test_split
-from lime.lime_tabular import LimeTabularExplainer
-from collections import Counter
-import ast
 from lime import submodular_pick
-import matplotlib.pyplot as plt
+from lime.lime_tabular import LimeTabularExplainer
 
 file_path = 'data/result_LIME'
 
