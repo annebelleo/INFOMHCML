@@ -153,7 +153,7 @@ y = data['sex_M']  # Predict final grade
 y_unprocessed = unprocessed_data['sex']
 
 # Train-test split
-X_train, X_test, y_train, y_test = train_test_split(X.head(60), y.head(60), test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 # Train-test split for LIME and PFI
 X_train_unprocessed, X_test_unprocessed, y_train_unprocessed, y_test_unprocessed = train_test_split(X_unprocessed.head(60), y_unprocessed.head(60), test_size=0.2, random_state=42)
 
@@ -170,7 +170,8 @@ shap_values_sex = shc.calculate_and_save_shap_values(regr_sex_all_feature, X_tra
 shap_most_important_feature_sex = shc.most_important_feature(shap_values_sex, X_test, number_of_most_important_feature)
 
 # find the most important features for sex, SP_LIME
-lime_values = spc.calculate_and_save_lime_values(regr_sex_all_feature, X_unprocessed, X_train_unprocessed, X_test_unprocessed, y_unprocessed)
+#lime_values = spc.calculate_and_save_lime_values(regr_sex_all_feature, X_unprocessed, X_train_unprocessed, X_test_unprocessed, y_unprocessed)
+lime_values = spc.calculate_and_save_lime_values_test(regr_sex_all_feature, X_test, y, data)
 
 # find the most important features for sex, PFI
 pfi_values = pfc.calculate_and_save_pfi_values(regr_sex_all_feature, X_test_unprocessed, y_test_unprocessed, y_unprocessed)

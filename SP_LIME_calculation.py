@@ -107,3 +107,99 @@ regr = SVR().fit(X_train, y_train)
 lime_values = calculate_and_save_lime_values(regr, X_train, X_test, y)
 print(retrieve_feature_list(lime_values))
 '''
+
+one_hot_encoded_features = {
+    'Mjob': ['Mjob_health', 'Mjob_other', 'Mjob_services', 'Mjob_teacher'],
+    'Fjob': ['Fjob_health', 'Fjob_other', 'Fjob_services', 'Fjob_teacher'],
+    'reason': ['reason_home', 'reason_other', 'reason_reputation'],
+    'guardian': ['guardian_mother', 'guardian_other'],
+    'school': ['school_MS'],
+    'sex': ['sex_M'],
+    'address': ['address_U'],
+    'famsize': ['famsize_LE3'],
+    'Pstatus': ['Pstatus_T'],
+    'schoolsup': ['schoolsup_yes'],
+    'famsup': ['famsup_yes'],
+    'fatherd': ['fatherd_yes'],
+    'activities': ['activities_yes'],
+    'nursery': ['nursery_yes'],
+    'higher': ['higher_yes'],
+    'internet': ['internet_yes'],
+    'romantic': ['romantic_yes']
+}
+
+
+def calculate_and_save_lime_values_test(model, X_test, predict_variable, processed_data):
+
+    # Extract column names from X_train
+    columns = X_test.columns.tolist()
+    # Extract the name of the variable to predict from X_predict
+    predict_column = predict_variable.name
+    # Construct the path
+    column_str = '_'.join(columns)
+    full_path = f"{file_path}/MODEL_{type(model).__name__}_FEATURES_{column_str}_PRED_{predict_column}"
+
+    # Create the result_LIME directory if it doesn't exist
+    os.makedirs('data/result_LIME', exist_ok=True)
+
+    # if the path contains more than 260 chars use a shorter string
+    if len(full_path) > 260:
+        full_path = f"{file_path}/MODEL_{type(model).__name__}_PRED_{predict_column}"
+
+    if not os.path.exists(full_path + f'.csv'):
+
+        explainer = LimeTabularExplainer(X_test.values,
+                                         mode='regression',
+                                         feature_names=X_test.columns,
+                                         categorical_features=[processed_data.columns.get_loc(c) for c in
+                                                               sum(one_hot_encoded_features.values(), [])],
+                                         categorical_names=one_hot_encoded_features)
+
+        exps = submodular_pick.SubmodularPick(explainer, X_test.values, model.predict, method='full', num_features=X_test.shape[1],
+                                       num_exps_desired=4)
+        # You can choose to explain a single instance or use other methods as per your requirement
+        exp = explainer.explain_instance(X_test.iloc[0].values, model.predict, num_features=X_test.shape[1])
+        figure = exp.as_pyplot_figure()
+        figure.show()
+
+
+        lime_values = []
+        for exp in exps.sp_explanations:
+            lime_values.append(exp.as_list())
+
+        lime_values_formatted = []
+        for value in lime_values:
+            parsed_features = []
+            for feature in value:
+                parts = feature[0].split()
+                for col in X_test.columns:
+                    if col in parts:
+                        feature_name = col
+                feature_value = feature[1]
+                parsed_features.append((feature_name, feature_value))
+            lime_values_formatted.append(parsed_features)
+
+        #checking that limes values are listed by importance
+        lime_values_feature_ranking = []
+        for element in lime_values_formatted:
+            sorted_values = sorted(element, key=lambda x: abs(x[1]), reverse=True)
+            lime_values_feature_ranking.append([item[0] for item in sorted_values])
+
+
+        # Assuming sp_obj.sp_explanations is a list of explanations
+        figures = [exp.as_pyplot_figure() for exp in exps.sp_explanations]
+
+        # save each figure individually
+        for i, fig in enumerate(figures):
+            fig.savefig(full_path + f'exp_{i + 1}_figure_{i + 1}.png')
+            fig.show()  # or plt.show(fig) depending on the exact return type
+            #fig.show()  # or plt.show(fig) depending on the exact return type
+            #[exp.as_pyplot_figure() for exp in exps.sp_explanations]
+
+        #lime_values_formatted = []
+        lime_df = pd.DataFrame(lime_values_feature_ranking)
+        lime_df.to_csv(full_path + f'.csv', index=False)
+
+    else:
+        lime_df = pd.read_csv(full_path+ f'.csv')
+    return lime_df

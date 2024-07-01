@@ -1,8 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import shap
-from lime import submodular_pick
-from lime.lime_tabular import LimeTabularExplainer
+from tabulate import tabulate
 from scipy.stats import pearsonr
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
@@ -104,11 +102,17 @@ def plot_pfi_values(pfi_values):
 
 
 def fairness_metrics(model_results):
+    metrics_dict = {}
+
     # Pearson correlation coefficient and p-value: between sex and actual outcomes
     r_acc, p_value_acc = pearsonr(model_results['sex_M'], model_results['G3'])
 
     # R-squared
     r_squared_acc = r_acc ** 2
+
+    metrics_dict['Pearson_corr_coeff_act'] = r_acc
+    metrics_dict['P_value_act'] = p_value_acc
+    metrics_dict['R_squared_act'] = r_squared_acc
 
     print(f"Sex & actual grades:")
     print(f"Pearson correlation coefficient: {r_acc}")
@@ -128,6 +132,10 @@ def fairness_metrics(model_results):
     print(f"P-value: {p_value_pred}")
     print(f"R-squared: {r_squared_pred}")
 
+    metrics_dict['Pearson_corr_coeff_pred'] = r_pred
+    metrics_dict['P_value_pred'] = p_value_pred
+    metrics_dict['R_squared_pred'] = r_squared_pred
+
     # Subset of model results per sex
     model_results_f = model_results[model_results['sex_M'] == 0]  # females (one hot encoding)
     model_results_m = model_results[model_results['sex_M'] == 1]  # males
@@ -142,7 +150,17 @@ def fairness_metrics(model_results):
     print(f'MAE females: {round(MAE_f, 4)}')
     print(f'MAE males: {round(MAE_m, 4)}')
     print(f'MAE difference: {round(MAE_difference, 4)}')
-    return ''
+
+    metrics_dict['MAE_females'] = round(MAE_f, 4)
+    metrics_dict['MAE_males'] = round(MAE_m, 4)
+    metrics_dict['MAE_difference'] = round(MAE_difference, 4)
+
+    # Convert metrics dictionary to dataframe
+    metrics_df = pd.DataFrame(metrics_dict, index=[0])
+
+    return metrics_df
+
+
 
 def change_values(series, string):
     if string in all_categorical_preprocessed_features:
@@ -174,17 +192,25 @@ def proxy_removal_metrics_check(common_proxies, data, regr, X_test, y_test):
         pred = regr.predict(X_test)
         proxies.append(proxy)
 
-        print('\n SVC model - predicting G3 without using protected attribute sex and ' + str(proxies))
+        print('\n SVR model - predicting G3 without using protected attribute sex and ' + str(proxies))
         print(metrics.mean_squared_error(y_test, pred))
+        print(root_mean_squared_error(y_test, pred))
         model_results = pd.DataFrame(
             {'sex_M': data.loc[X_test.index, 'sex_M'], 'G3': y_test, 'prediction': pred})
 
-        fairness_metrics(model_results)
+        metrics_dataframe = fairness_metrics(model_results)
+
+        print_metrics_table(metrics_dataframe)
 
 def finetuned_model():
     # Finetuned SVR Model
     svr_final_model = SVR(C=18, gamma='scale', epsilon=0.5).fit(X_train, y_train)
     return svr_final_model
+
+def finetuned_model_SVC():
+    # Finetuned SVC Model
+    svc_final_model =  SVC(C=0.1, gamma=1, kernel='rbf', probability=True)
+    return svc_final_model
 
 def load_dataset():
     # Load your dataset
@@ -208,10 +234,21 @@ def load_preprocessed_dataset():
     # Load your dataset
     return pd.read_csv('data/preprocessed_student_por.csv', delimiter=',')
 
+def print_metrics_table(metrics_dataframe):
+    # Extract data from the DataFrame into a list of lists
+    table_data = []
+    for column in metrics_dataframe.columns:
+        table_data.append([column, metrics_dataframe[column].values[0]])
+
+    # Print the table using tabulate
+    table = tabulate(table_data, headers=["Metric", "Value"], tablefmt="latex_raw")
+
+    # Print or use the table
+    print(table)
 
 data = load_preprocessed_dataset()
 data_unprocessed = load_dataset()
-'''--------Predicting G3 using all the features except G1 and G2--------'''
+'''--------Predicting G3 using all the features--------'''
 
 # Predicting G3 using all the features except G1 and G2
 features = data.drop(columns=['G3'])
@@ -224,9 +261,19 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 # Train the model
 regr_final_grade_all_features = finetuned_model().fit(X_train, y_train)
 pred = regr_final_grade_all_features.predict(X_test)
-'''
 
-# Initialize the SHAP explainer SVC
+print(root_mean_squared_error(y_test, pred))
+
+model_results = pd.DataFrame(
+            {'sex_M': data.loc[X_test.index, 'sex_M'], 'G3': y_test, 'prediction': pred})
+
+metrics_dataframe = fairness_metrics(model_results)
+
+print_metrics_table(metrics_dataframe)
+
+print('\n\n\n\n\n\n\n\n\n')
+'''
+# Initialize the SHAP explainer SVR
 explainer = shap.KernelExplainer(regr_final_grade_all_features.predict, X_test)
 # Calculate SHAP values for the test set
 shap_values = explainer.shap_values(X_test)
@@ -237,7 +284,7 @@ list_features = X_test.columns.tolist()
 indices = []
 for key, columns in one_hot_encoded_features.items():
     column_indices = [X_test.columns.get_loc(name) for name in columns]
-    values = abs(shap_values[:, column_indices]).sum(axis=1)
+    values = shap_values[:, column_indices].sum(axis=1)
     # Drop the one-hot encoded columns
     new_shap_values[:, column_indices[0]] = values
     indices.append(column_indices[1:])
@@ -267,18 +314,18 @@ shap_df_G3['Name'] = shap_df_G3['Name'].replace('Fjob_health', 'Fjob')
 shap_df_G3['Name'] = shap_df_G3['Name'].replace('reason_home', 'reason')
 shap_df_G3['Name'] = shap_df_G3['Name'].replace('guardian_mother', 'guardian')
 
-shap_df_G3 = shap_df_G3.sort_values(by='Shap_Value', ascending=False)
+shap_df_G3 = shap_df_G3.sort_values(by='Shap_Value', ascending=True)
 
 # Print the DataFrame (optional)
 print(shap_df_G3)
 
 # Plotting using Matplotlib
 plt.figure(figsize=(10, 6))
-plt.barh(shap_df_G3['Name'], shap_df_G3['Shap_Value'], color='skyblue')
-plt.xlabel('SHAP value')
+plt.barh(shap_df_G3['Name'], shap_df_G3['Shap_Value'], color='lightskyblue')
+plt.xlabel('mean(|SHAP value|)(average impact on model output magnitude)')
 plt.ylabel('Features')
 plt.title('Feature Importance')
-plt.grid(True)
+plt.grid(False)
 plt.show()
 
 
@@ -291,9 +338,6 @@ plt.show()
 
 
 
-
-
-'''
 #PREDICTING SEX USING SVC
 
 # Predicting G3 using all the features except G1 and G2
@@ -308,7 +352,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 class_sex_all_features = SVC(probability=True).fit(X_train, y_train)
 pred = class_sex_all_features.predict(X_test)
 print(metrics.accuracy_score(y_test, pred))
-'''
+
 # Initialize the SHAP explainer SVC
 explainer = shap.KernelExplainer(class_sex_all_features.predict_proba, X_test)
 # Calculate SHAP values for the test set
@@ -316,10 +360,61 @@ shap_values = explainer.shap_values(X_test)
 
 shap.summary_plot(shap_values[:,:,0], X_test, plot_type="bar", max_display=10)
 plt.show()
+# Function to sum values for each categorical feature
+new_shap_values = np.copy(shap_values)
+list_features = X_test.columns.tolist()
+indices = []
+#take the columns i
+for key, columns in one_hot_encoded_features.items():
+    column_indices = [X_test.columns.get_loc(name) for name in columns]
+    for index in range(shap_values.shape[2]):
+        values = shap_values[:, column_indices, index].sum(axis=1)
+        # Drop the one-hot encoded columns
+        new_shap_values[:, column_indices[0], index] = values
+    indices.append(column_indices[1:])
 
-explainer = LimeTabularExplainer(X_test.values,
+integers = [num for sublist in indices for num in sublist if isinstance(num, int)]
+new_shap_values = np.delete(new_shap_values, integers, axis=0)
+list_features = [list_features[i] for i in range(len(list_features)) if i not in integers]
+
+# Assuming shap_values is your SHAP values matrix
+feature_importance = np.mean(np.abs(new_shap_values[:,:,0]), axis=0)
+print(feature_importance)
+
+shap_df_sex = pd.DataFrame({
+    'Name': list_features,
+    'Shap_Value': feature_importance
+})
+
+# Rename the 'Name' column to 'Feature_Name'
+shap_df_sex['Name'] = shap_df_sex['Name'].replace('Mjob_health', 'Mjob')
+shap_df_sex['Name'] = shap_df_sex['Name'].replace('Fjob_health', 'Fjob')
+shap_df_sex['Name'] = shap_df_sex['Name'].replace('reason_home', 'reason')
+shap_df_sex['Name'] = shap_df_sex['Name'].replace('guardian_mother', 'guardian')
+
+shap_df_sex = shap_df_sex.sort_values(by='Shap_Value', ascending=True)
+
+# Print the DataFrame (optional)
+print(shap_df_sex)
+
+# Plotting using Matplotlib
+plt.figure(figsize=(10, 6))
+plt.barh(shap_df_sex['Name'], shap_df_sex['Shap_Value'], color='lightskyblue')
+plt.xlabel('mean(|SHAP value|)(average impact on model output magnitude)')
+plt.ylabel('Features')
+plt.title('Feature Importance')
+plt.grid(False)
+plt.show()
+
+
+
+
+
+#LIME
+
+explainer = LimeTabularExplainer(X_train.values,
                                  mode='classification',
-                                 feature_names=X_test.columns,
+                                 feature_names=X_train.columns,
                                  categorical_features=[data.columns.get_loc(c) for c in
                                                        sum(one_hot_encoded_features.values(), [])],
                                  categorical_names=one_hot_encoded_features)
@@ -337,7 +432,7 @@ figure.savefig('testststststs')
 print('test')
 
 
-'''
+
 #PFI
 
 base_predictions = class_sex_all_features.predict(X_test)
@@ -349,7 +444,7 @@ pfi_results_df['Feature'] = pfi_results_df['Feature'].replace('Fjob_health', 'Fj
 pfi_results_df['Feature'] = pfi_results_df['Feature'].replace('reason_home', 'reason')
 pfi_results_df['Feature'] = pfi_results_df['Feature'].replace('guardian_mother', 'guardian')
 plot_pfi_values(pfi_results_df)
-
+'''
 
 # find the most correlated values with sex
 corr_data_sex = data_unprocessed.select_dtypes(include='number')
@@ -360,7 +455,7 @@ correlation_with_target = correlation_with_target.sort_values(ascending=False)
 # Get the most correlated features
 top_correlated_features_sex = correlation_with_target.drop(['G3'] + ['sex']).head(10).index.tolist()
 
-# find the most correlated values with sex
+# find the most correlated values with G3
 corr_data_g3 = data_unprocessed.select_dtypes(include='number')
 corr = corr_data_g3.corr()
 target_feature = 'G3'
@@ -381,32 +476,32 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 '''--------Retraining the model without using sex and proxies SHAP--------'''
 print('\n\n--------Retraining the model without using sex and proxies SHAP--------\n\n')
 
-common_proxies_shap = ['health', 'activities_yes']
+common_proxies_shap = ['sex_M', 'health', 'activities_yes']
 # accuracy and fairness (add fairness)
-print('\n SVR model - SHAP predicting G3 without using protected attribute sex and ' + str(common_proxies_shap))
+print('\n SVR model - SHAP predicting G3 without using ' + str(common_proxies_shap))
 proxy_removal_metrics_check(common_proxies_shap, data, regr_final_grade_all_features, X_test, y_test)
 
 '''--------Retraining the model without using sex and proxies LIME--------'''
 print('\n\n--------Retraining the model without using sex and proxies LIME--------\n\n')
 
-common_proxies_lime = ['G2', 'health']
+common_proxies_lime = ['sex_M','G2', 'health']
 # accuracy and fairness (add fairness)
-print('\n SVR model - LIME predicting G3 without using protected attribute sex and ' + str(common_proxies_lime))
+print('\n SVR model - LIME predicting G3 without using ' + str(common_proxies_lime))
 proxy_removal_metrics_check(common_proxies_lime, data, regr_final_grade_all_features, X_test, y_test)
 
 '''--------Retraining the model without using sex and proxies PFI--------'''
 print('\n\n--------Retraining the model without using sex and proxies PFI--------\n\n')
 
-common_proxies_pfi = ['health']
+common_proxies_pfi = ['sex_M','health']
 # accuracy and fairness (add fairness)
-print('\n SVR model - PFI predicting G3 without using protected attribute sex and ' + str(common_proxies_pfi))
+print('\n SVR model - PFI predicting G3 without using ' + str(common_proxies_pfi))
 proxy_removal_metrics_check(common_proxies_pfi, data, regr_final_grade_all_features, X_test, y_test)
 
 '''--------Retraining the model without using sex and proxies correlation--------'''
 print('\n\n--------Retraining the model without using sex and proxies correlation--------\n\n')
 
-common_proxies_correlation = ['Mjob','health']
+common_proxies_correlation = ['sex_M','Mjob','health']
 # accuracy and fairness (add fairness)
-print('\n SVR model - correlation predicting G3 without using protected attribute sex and ' + str(common_proxies_correlation))
+print('\n SVR model - correlation predicting G3 without using ' + str(common_proxies_correlation))
 proxy_removal_metrics_check(common_proxies_correlation, data, regr_final_grade_all_features, X_test, y_test)
 
